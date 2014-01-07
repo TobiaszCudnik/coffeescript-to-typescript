@@ -11,7 +11,6 @@ helpers        = require './helpers'
 optparse       = require './optparse'
 CoffeeScript   = require './coffee-script'
 FakeBlock      = require './compile-with-comments'
-TPA            = require './typescript-property-accumulator'
 reAddComments  = require 're-add-comments'
 {spawn, exec}  = require 'child_process'
 {EventEmitter} = require 'events'
@@ -95,8 +94,6 @@ exports.run = ->
   onCompilationFinished = ->
     if failedFiles.length
       printLine "#{failedFiles.length} files failed"
-    else
-      TPA generatedFiles if generatedFiles.length
   runningFiles.push sources...
   for source in sources
     compilePath source, yes, path.normalize source

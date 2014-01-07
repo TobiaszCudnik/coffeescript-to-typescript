@@ -542,7 +542,9 @@ exports.Block = class Block extends Base
     fragments = @compileWithDeclarations o
     return fragments if o.bare
     [].concat prelude, fragments
-
+	  
+  freeVars: ['results', 'i', 'base', 'ref', 'len', 'fn', 'name', 'arg']
+	  
   # Compile the expressions body for the contents of a function, with
   # declarations of all inner variables pushed up to the top.
   compileWithDeclarations: (o) ->
@@ -560,13 +562,18 @@ exports.Block = class Block extends Base
     post = @compileNode o
     {scope} = o
     if scope.expressions is this
-      declars = o.scope.hasDeclarations()
+      freeVarRegexp = new RegExp "^(_#{@freeVars.join '|_'})"
+      declars = []
+      if o.scope.hasDeclarations()
+        for name in scope.declaredVariables()
+          if name.match freeVarRegexp
+            declars.push name  
       assigns = scope.hasAssignments
-      if declars or assigns
+      if declars.length or assigns
         fragments.push @makeCode '\n' if i
         fragments.push @makeCode "#{@tab}var "
         if declars
-          fragments.push @makeCode scope.declaredVariables().join(', ')
+          fragments.push @makeCode declars.join(', ')
         if assigns
           fragments.push @makeCode ",\n#{@tab + TAB}" if declars
           fragments.push @makeCode scope.assignedVariables().join(",\n#{@tab + TAB}")
@@ -1327,7 +1334,10 @@ exports.Assign = class Assign extends Base
         if @param
           o.scope.add name, 'var'
         else
-          o.scope.find name
+          found = o.scope.find name
+          if not found
+            debugger
+            compiledName.unshift new CodeFragment @variable, 'var '
 
     val = @value.compileToFragments o, LEVEL_LIST
     return (compiledName.concat @makeCode(": "), val) if @context is 'object'
@@ -1417,9 +1427,9 @@ exports.Assign = class Assign extends Base
   compileConditional: (o) ->
     [left, right] = @variable.cacheReference o
     # Disallow conditional assignment of undefined variables.
-    if not left.properties.length and left.base instanceof Literal and
-           left.base.value != "this" and not o.scope.check left.base.value
-      @variable.error "the variable \"#{left.base.value}\" can't be assigned with #{@context} because it has not been declared before"
+#    if not left.properties.length and left.base instanceof Literal and
+#           left.base.value != "this" and not o.scope.check left.base.value
+#      @variable.error "the variable \"#{left.base.value}\" can't be assigned with #{@context} because it has not been declared before"
     if "?" in @context then o.isExistentialEquals = true
     new Op(@context[...-1], left, new Assign(right, @value, '=')).compileToFragments o
 
