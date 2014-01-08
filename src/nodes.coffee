@@ -465,12 +465,21 @@ exports.Block = class Block extends Base
       else
         helpers.tsReferencePath
       prelude.push @makeCode "/// <reference path=\"#{refpath}\" />\n"
-                                                                                          	    
+	    
     # Import TS definition references
     code = helpers.currentCode()
     reference_regexp = /^#\/\s*<reference.+$/mg
     while match = reference_regexp.exec code
       @expressions.splice 0, 0, new LineComment match[0]
+
+    # CommonJS module requires
+    for node, node_i in @expressions
+      node.match [
+        new Assign(new M("import_name"), new Call(mkVanillaID("require"), 
+          [new Value(M("module_name"))]))
+        ({import_name, module_name}) =>
+          @expressions[node_i] = new TsImport import_name, module_name
+      ]
 
     # AMD module define
     for node, node_i in @expressions
@@ -802,7 +811,7 @@ exports.Comment = class Comment extends Base
       code = "/*#{multident @comment, @tab}#{if '\n' in @comment then "\n#{@tab}" else ''}*/"
     code = o.indent + code if (level or o.level) is LEVEL_TOP
     [@makeCode(code)]
-	  
+                                                            	  
 exports.LineComment = class LineComment extends Base
   constructor: (@comment) ->
 
@@ -813,6 +822,18 @@ exports.LineComment = class LineComment extends Base
     code = @comment.replace /^#/, '//'
     code = o.indent + code if (level or o.level) is LEVEL_TOP
     [@makeCode(code)]
+                                                            	  
+exports.TsImport = class TsImport extends Base
+  constructor: (@import_name, @module_name) ->
+
+  isStatement:     YES
+  makeReturn:      THIS
+
+  compileNode: (o, level) ->
+    code = "import #{@import_name.base.value} = " +
+      "require(#{@module_name.value});"
+    code = o.indent + code if (level or o.level) is LEVEL_TOP
+    [@makeCode code]
 
 exports.Newline = class Newline extends Comment
   @extra: (block, lines = 1) -> if lines > 1 then block.push new Newline()
@@ -1230,7 +1251,8 @@ exports.Class = class Class extends Base
     declaration = [
       @makeCode indent
       @makeCode if @shouldExport then "export " else ""
-      @makeCode "class #{name}"
+      # TODO selective export
+      @makeCode "export class #{name}"
       if @parent then [
         @makeCode( " extends "),
         @parent.compileToFragments o
@@ -1258,9 +1280,6 @@ exports.Class = class Class extends Base
       else
         memberCode = []
 
-        visibility_flag = "public "
-        visibility_flag = "" if assign.value.isConstructor
-
         if vname = atProperty assign.variable
           isStatic = yes
         else if assign.context is 'object' and vname = assign.variable.vanillaName()
@@ -1277,7 +1296,7 @@ exports.Class = class Class extends Base
           continue
 
         static_flag = if isStatic                 then "static "    else ""
-        memberCode.push @makeCode "#{o.indent}#{visibility_flag}#{static_flag}"
+        memberCode.push @makeCode "#{o.indent}#{static_flag}"
 
         if (fn = assign.value) instanceof Code
           fn.isMethod = yes
