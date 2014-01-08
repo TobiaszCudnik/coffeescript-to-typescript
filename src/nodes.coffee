@@ -1250,8 +1250,9 @@ exports.Class = class Class extends Base
     prelude = []
     declaration = [
       @makeCode indent
-      @makeCode if @shouldExport then "export " else ""
-      # TODO selective export
+	    
+	    # TODO export only the top level classes
+      # TODO later: selective export (read commonjs module.exports)
       @makeCode "export class #{name}"
       if @parent then [
         @makeCode( " extends "),
