@@ -13,8 +13,9 @@ path = require 'path'
 
 # Import the helpers we plan to use.
 helpers = {compact, flatten, extend, merge, del, starts, ends, last, some,
-addLocationDataFn, locationDataToString, printStack, currentFilename
-throwSyntaxError, sendSyntaxWarning, sendNotGeneratingWarning} = require './helpers'
+  addLocationDataFn, locationDataToString, printStack, currentFilename
+  throwSyntaxError, sendSyntaxWarning, sendNotGeneratingWarning
+  currentCode} = require './helpers'
 
 # Functions required by parser
 exports.extend = extend
@@ -464,6 +465,12 @@ exports.Block = class Block extends Base
       else
         helpers.tsReferencePath
       prelude.push @makeCode "/// <reference path=\"#{refpath}\" />\n"
+                                                                                          	    
+    # Import TS definition references
+    code = helpers.currentCode()
+    reference_regexp = /^#\/\s*<reference.+$/mg
+    while match = reference_regexp.exec code
+      @expressions.splice 0, 0, new LineComment match[0]
 
     # AMD module define
     for node, node_i in @expressions
@@ -542,9 +549,9 @@ exports.Block = class Block extends Base
     fragments = @compileWithDeclarations o
     return fragments if o.bare
     [].concat prelude, fragments
-	  
+
   freeVars: ['results', 'i', 'base', 'ref', 'len', 'fn', 'name', 'arg']
-	  
+
   # Compile the expressions body for the contents of a function, with
   # declarations of all inner variables pushed up to the top.
   compileWithDeclarations: (o) ->
@@ -793,6 +800,17 @@ exports.Comment = class Comment extends Base
   compileNode: (o, level) ->
     unless [isTSCode, code] = @comment.match(/^tsonly-- (.*)$/) or no
       code = "/*#{multident @comment, @tab}#{if '\n' in @comment then "\n#{@tab}" else ''}*/"
+    code = o.indent + code if (level or o.level) is LEVEL_TOP
+    [@makeCode(code)]
+	  
+exports.LineComment = class LineComment extends Base
+  constructor: (@comment) ->
+
+  isStatement:     YES
+  makeReturn:      THIS
+
+  compileNode: (o, level) ->
+    code = @comment.replace /^#/, '//'
     code = o.indent + code if (level or o.level) is LEVEL_TOP
     [@makeCode(code)]
 
@@ -1336,7 +1354,6 @@ exports.Assign = class Assign extends Base
         else
           found = o.scope.find name
           if not found
-            debugger
             compiledName.unshift new CodeFragment @variable, 'var '
 
     val = @value.compileToFragments o, LEVEL_LIST

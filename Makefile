@@ -15,10 +15,10 @@ build:
 	coffee -cmo lib --watch src/*.coffee
 	
 debug:
-	node --harmony --debug-brk bin/coffee -cma test.coffee
+	node --harmony --debug-brk bin/coffee -cm test.coffee
 	
 test:
-	./bin/coffee -cma test.coffee
+	./bin/coffee -cm test.coffee
 
 browser-debugger/transpiler.js : browser-debugger/browser-debugger.js $(LIB)
 	node_modules/.bin/cjsify browser-debugger/browser-debugger.js --ignore-missing 							\

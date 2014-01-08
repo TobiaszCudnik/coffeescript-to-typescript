@@ -11,7 +11,6 @@ helpers        = require './helpers'
 optparse       = require './optparse'
 CoffeeScript   = require './coffee-script'
 FakeBlock      = require './compile-with-comments'
-reAddComments  = require 're-add-comments'
 {spawn, exec}  = require 'child_process'
 {EventEmitter} = require 'events'
 require('source-map-support').install()
@@ -53,7 +52,6 @@ SWITCHES = [
 
   ['-r', '--ref [FILE]',      'add ///<reference path="[file]" /> to ts files']
   ['-d', '--dangerous',       'ignore warnings']
-  ['-a', '--addcomments',     're-add comments to the output']
 ]
 
 # Top-level objects shared by all the functions.
@@ -139,10 +137,7 @@ compileScript = (file, input, base=null) ->
     t = task = {file, input, options}
     CoffeeScript.emit 'compile', task
 
-    if o.addcomments
-      source = FakeBlock.makeFakeblocks t.input
-    else
-      source = t.input
+    source = t.input
 
     setTranslatingFile file, source
 
@@ -155,14 +150,10 @@ compileScript = (file, input, base=null) ->
       compileJoin()
     else
       compiled = CoffeeScript.compile source, t.options
-      if o.addcomments
-        output = reAddComments(compiled.js, source, compiled.sourceMapHash)
-        t.output = FakeBlock.unmakeFakeblocks output
-      else
-        t.output = compiled
-        if o.map
-          t.output = compiled.js
-          t.sourceMap = compiled.v3SourceMap
+      t.output = compiled
+      if o.map
+        t.output = compiled.js
+        t.sourceMap = compiled.v3SourceMap
 
       CoffeeScript.emit 'success', task
       if o.print

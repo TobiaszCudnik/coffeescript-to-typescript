@@ -152,6 +152,8 @@ exports.setTranslatingFile = (fname, code) ->
   translating_filename = fname
   translating_code = code
 
+exports.currentCode = -> translating_code
+
 exports.currentFilename = () -> translating_filename
 
 exports.sendSyntaxWarning = (message, location) ->
