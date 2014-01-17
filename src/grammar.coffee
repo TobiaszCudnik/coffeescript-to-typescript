@@ -89,6 +89,7 @@ grammar =
   # Pure statements which cannot be expressions.
   Statement: [
     o 'Return'
+    o 'YieldFrom'
     o 'Comment'
     o 'STATEMENT',                              -> new Literal $1
   ]
@@ -99,6 +100,7 @@ grammar =
   # them somewhat circular.
   Expression: [
     o 'Value'
+    o 'Yield'
     o 'Invocation'
     o 'Code'
     o 'Operation'
@@ -171,6 +173,18 @@ grammar =
   Return: [
     o 'RETURN Expression',                      -> new Return $2
     o 'RETURN',                                 -> new Return
+  ]
+
+  # A yield keyword from a generator function body.
+  Yield: [
+    o 'YIELD Expression',                      -> new Yield $2
+    o 'YIELD',                                 -> new Yield
+  ]
+
+  # A yieldfrom statement from a generator function body.
+  YieldFrom: [
+    o 'YIELDFROM Expression',                      -> new YieldFrom $2
+    o 'YIELDFROM',                                 -> new YieldFrom
   ]
 
   # A block comment.
@@ -478,8 +492,10 @@ grammar =
   ForSource: [
     o 'FORIN Expression',                               -> source: $2
     o 'FOROF Expression',                               -> source: $2, object: yes
+    o 'FOROUTOF Expression',                            -> source: $2, generator: yes
     o 'FORIN Expression WHEN Expression',               -> source: $2, guard: $4
     o 'FOROF Expression WHEN Expression',               -> source: $2, guard: $4, object: yes
+    o 'FOROUTOF Expression WHEN Expression',            -> source: $2, guard: $4, generator: yes
     o 'FORIN Expression BY Expression',                 -> source: $2, step:  $4
     o 'FORIN Expression WHEN Expression BY Expression', -> source: $2, guard: $4, step: $6
     o 'FORIN Expression BY Expression WHEN Expression', -> source: $2, step:  $4, guard: $6
@@ -586,8 +602,8 @@ operators = [
   ['left',      'COMPARE']
   ['left',      'LOGIC']
   ['nonassoc',  'INDENT', 'OUTDENT']
-  ['right',     '=', ':', 'COMPOUND_ASSIGN', 'RETURN', 'THROW', 'EXTENDS']
-  ['right',     'FORIN', 'FOROF', 'BY', 'WHEN']
+  ['right',     '=', ':', 'COMPOUND_ASSIGN', 'RETURN', 'YIELD', 'YIELDFROM', 'THROW', 'EXTENDS']
+  ['right',     'FORIN', 'FOROF', 'FOROUTOF', 'BY', 'WHEN']
   ['right',     'IF', 'ELSE', 'FOR', 'WHILE', 'UNTIL', 'LOOP', 'SUPER', 'CLASS']
   ['right',     'POST_IF']
 ]

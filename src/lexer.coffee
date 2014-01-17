@@ -124,6 +124,9 @@ exports.Lexer = class Lexer
         tag = 'IF'
       else if tag in UNARY
         tag = 'UNARY'
+      else if tag is 'OUTOF' and @seenFor
+        tag = 'FOROUTOF'
+        @seenFor = no
       else if tag in RELATION
         if tag isnt 'INSTANCEOF' and @seenFor
           tag = 'FOR' + tag
@@ -711,13 +714,13 @@ exports.Lexer = class Lexer
 JS_KEYWORDS = [
   'true', 'false', 'null', 'this'
   'new', 'delete', 'typeof', 'in', 'instanceof'
-  'return', 'throw', 'break', 'continue', 'debugger'
+  'return', 'yield', 'throw', 'break', 'continue', 'debugger'
   'if', 'else', 'switch', 'for', 'while', 'do', 'try', 'catch', 'finally'
   'class', 'extends', 'super'
 ]
 
 # CoffeeScript-only keywords.
-COFFEE_KEYWORDS = ['undefined', 'then', 'unless', 'until', 'loop', 'of', 'by', 'when']
+COFFEE_KEYWORDS = ['undefined', 'then', 'unless', 'until', 'loop', 'of', 'by', 'when', 'yieldfrom', 'outof']
 
 COFFEE_ALIAS_MAP =
   and  : '&&'
@@ -740,7 +743,7 @@ RESERVED = [
   'case', 'default', 'function', 'var', 'void', 'with', 'const', 'let', 'enum'
   'export', 'import', 'native', '__hasProp', '__extends', '__slice', '__bind'
   '__indexOf', 'implements', 'interface', 'package', 'private', 'protected'
-  'public', 'static', 'yield'
+  'public', 'static'
 ]
 
 STRICT_PROSCRIBED = ['arguments', 'eval']

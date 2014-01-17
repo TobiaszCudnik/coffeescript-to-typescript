@@ -698,6 +698,34 @@ exports.Return = class Return extends Base
     return answer
 
 
+exports.Yield = class Yield extends Base
+  constructor: (expr) ->
+    @expression = expr if expr and not expr.unwrap().isUndefined
+
+  children: ['expression']
+
+  compileNode: (o) ->
+    "yield#{[" #{@expression.compile o, LEVEL_PAREN}" if @expression]}"
+
+exports.YieldFrom = class YieldFrom extends Base
+  constructor: (expr) ->
+    @expression = expr if expr and not expr.unwrap().isUndefined
+
+  children: ['expression']
+
+  compileNode: (o) ->
+    sendvar = o.scope.freeVariable 'send'
+    resvar = o.scope.freeVariable 'result'
+    refvar = o.scope.freeVariable 'ref'
+
+    code  = "var #{refvar} = #{[" #{@expression.compile o, LEVEL_PAREN}" if @expression]};\n"
+    code += "#{@tab}var #{sendvar}, #{resvar} = {};\n"
+    code += "#{@tab}while(!#{resvar}.done) {\n"
+    code += "#{@tab + TAB}#{resvar} = #{refvar}.send(#{sendvar});\n"
+    code += "#{@tab + TAB}#{sendvar} = yield #{resvar}.value;\n"
+    code += "#{@tab}}"
+    return code
+
 #### Value
 
 # A value, variable or literal or parenthesized, indexed or dotted into,
@@ -1593,6 +1621,8 @@ exports.Code = class Code extends Base
       uniqs.push name
     @body.makeReturn() unless wasEmpty or @noReturn or @isConstructor
     idt   = o.indent
+    functionToken = 'function'
+    functionToken += '*' if @body.containsType(Yield)
 
     argscode = [
       @makeCode '('
@@ -1625,9 +1655,9 @@ exports.Code = class Code extends Base
         [argscode, @makeCode(' => '), bodycode]
       else if @name? and not @bound
         exportFlag = if @shouldExport or @front then "export " else ""
-        [@makeCode("#{@tab}#{exportFlag}function "), @name.compileNode(o), argscode, @makeCode(" "), bodycode]
+        [@makeCode("#{@tab}#{exportFlag}#{functionToken} "), @name.compileNode(o), argscode, @makeCode(" "), bodycode]
       else if not @bound
-        [@makeCode("function"), argscode, @makeCode(" "), bodycode]
+        [@makeCode(functionToken), argscode, @makeCode(" "), bodycode]
       else
         @nogen "bound non-method function has a name (internal compiler error)"
     )
@@ -2116,9 +2146,10 @@ exports.Parens = class Parens extends Base
 exports.For = class For extends While
   constructor: (body, source) ->
     {@source, @guard, @step, @name, @index} = source
-    @body    = Block.wrap [body]
-    @own     = !!source.own
-    @object  = !!source.object
+    @body      = Block.wrap [body]
+    @own       = !!source.own
+    @object    = !!source.object
+    @generator = !!source.generator
     [@name, @index] = [@index, @name] if @object
     @index.error 'index cannot be a pattern matching expression' if @index instanceof Value
     @range   = @source instanceof Value and @source.base instanceof Range and not @source.properties.length
@@ -2145,7 +2176,7 @@ exports.For = class For extends While
     scope.find(name)  if name and not @pattern
     scope.find(index) if index
     rvar      = scope.freeVariable 'results' if @returns
-    ivar      = (@object and index) or scope.freeVariable 'i'
+    ivar      = ((@object or @generator) and index) or scope.freeVariable 'i'
     kvar      = (@range and name) or index or ivar
     kvarAssign = if kvar isnt ivar then "#{kvar} = " else ""
     if @step and not @range
@@ -2154,8 +2185,11 @@ exports.For = class For extends While
     name      = ivar if @pattern
     varPart   = ''
     guardPart = ''
+    topPart   = ''
     defPart   = ''
     idt1      = @tab + TAB
+    loopType = 'for'
+    loopType = 'while' if @generator
     if @range
       forPartFragments = source.compileToFragments merge(o, {index: ivar, name, @step})
     else
@@ -2163,7 +2197,7 @@ exports.For = class For extends While
       if (name or @own) and not IDENTIFIER.test svar
         defPart    += "#{@tab}#{ref = scope.freeVariable 'ref'} = #{svar};\n"
         svar       = ref
-      if name and not @pattern
+      if name and not @pattern and not @generator
         namePart   = "#{name} = #{svar}[#{kvar}]"
       if not @object
         defPart += "#{@tab}#{step};\n" if step isnt stepVar
@@ -2193,7 +2227,7 @@ exports.For = class For extends While
         body.expressions.unshift new If (new Parens @guard).invert(), new Literal "continue"
       else
         body = Block.wrap [new If @guard, body] if @guard
-    if @pattern
+    if @pattern and not @generator
       body.expressions.unshift new Assign @name, new Literal "#{svar}[#{kvar}]"
     defPartFragments = [].concat @makeCode(defPart), @pluckDirectCall(o, body)
     varPart = "\n#{idt1}#{namePart};" if namePart
