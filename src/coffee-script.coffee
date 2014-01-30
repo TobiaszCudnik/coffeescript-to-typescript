@@ -120,6 +120,7 @@ parser.yy = require './nodes'
 # Override Jison's default error handling function.
 parser.yy.parseError = (message, {token}) ->
   # Disregard Jison's message, it contains redundant line numer information.
+  throw new Error
   message = "unexpected #{if token is 1 then 'end of input' else token}"
   # The second argument has a `loc` property, which should have the location
   # data for this token. Unfortunately, Jison seems to send an outdated `loc`

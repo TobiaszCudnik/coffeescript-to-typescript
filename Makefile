@@ -19,6 +19,9 @@ debug:
 	
 test:
 	./bin/coffee -cm test.coffee
+	
+test-debug:
+	node --debug-brk bin/coffee -cm test.coffee
 
 browser-debugger/transpiler.js : browser-debugger/browser-debugger.js $(LIB)
 	node_modules/.bin/cjsify browser-debugger/browser-debugger.js --ignore-missing 							\
