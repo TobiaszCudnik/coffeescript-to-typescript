@@ -597,7 +597,7 @@ exports.Block = class Block extends Base
         if declars
           fragments.push @makeCode declars.join(', ')
         if assigns
-          fragments.push @makeCode ",\n#{@tab + TAB}" if declars
+          fragments.push @makeCode ",\n#{@tab + TAB}" if declars.length
           fragments.push @makeCode scope.assignedVariables().join(",\n#{@tab + TAB}")
         fragments.push @makeCode ";\n#{if @spaced then '\n' else ''}"
       else if fragments.length and post.length
