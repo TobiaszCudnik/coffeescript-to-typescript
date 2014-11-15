@@ -73,7 +73,7 @@ exports.compile = compile = (code, options = {}) ->
     js = "// #{header}\n#{js}"
 
   # TODO Dirty dirty
-  js = js.replace /return \s*var \s*(\w+) \s*=\s*(.+?);/, 'return $2;'
+#  js = js.replace /return \s*var \s*(\w+) \s*=\s*(.+?);/, 'var $1$2; return '
 
   if options.sourceMap
     answer = {js}
